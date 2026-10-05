@@ -1,29 +1,113 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GaragePro - Gérez votre garage auto</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GaragePro - Gérez votre garage</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-body{font-family:Arial;margin:0;background:#0f172a;color:white}
-header{padding:20px;text-align:center;background:#1e293b}
-.btn{background:#22c55e;color:white;padding:12px 24px;border:none;border-radius:8px;font-size:16px}
-.hero{padding:60px 20px;text-align:center}
-.cards{display:flex;flex-wrap:wrap;gap:15px;justify-content:center;padding:20px}
-.card{background:#1e293b;padding:20px;border-radius:12px;width:280px}
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+body{background:#0a0f0d;color:#fff;min-height:100vh}
+.container{max-width:420px;margin:0 auto;padding:20px;min-height:100vh}
+.logo{text-align:center;padding:40px 0 20px}
+.logo-icon{width:80px;height:80px;background:linear-gradient(135deg,#00e676,#00b248);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 15px}
+h1{font-size:32px;font-weight:800}
+.subtitle{color:#888;margin-top:8px}
+.card{background:#151d1a;border-radius:16px;padding:20px;margin:15px 0}
+.revenue{background:linear-gradient(135deg,#00c853,#009624)}
+.revenue h3{font-size:14px;opacity:.9}
+.revenue .amount{font-size:32px;font-weight:800;margin:5px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{background:#151d1a;border-radius:16px;padding:18px;text-align:center}
+.stat .icon{font-size:28px;margin-bottom:8px}
+.stat .val{font-size:20px;font-weight:700}
+.stat .lbl{font-size:12px;color:#888;margin-top:4px}
+input{width:100%;background:#151d1a;border:1px solid #2a3532;border-radius:12px;padding:15px;color:#fff;margin:8px 0;font-size:16px}
+.btn{width:100%;background:#00e676;color:#000;border:none;border-radius:12px;padding:16px;font-size:18px;font-weight:700;margin-top:15px;cursor:pointer}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#0f1513;border-top:1px solid #222;display:flex;max-width:420px;margin:0 auto}
+.nav a{flex:1;text-align:center;padding:15px 5px;color:#888;text-decoration:none;font-size:12px}
+.nav a.active{color:#00e676}
+.hidden{display:none}
+.badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.badge-green{background:#00e67622;color:#00e676}
+.badge-orange{background:#ff980022;color:#ff9800}
 </style>
 </head>
 <body>
-<header><h1>GaragePro</h1><p>Le SaaS pour garages auto modernes</p></header>
-<div class="hero">
-<h2>Gérez clients, réparations et factures</h2>
-<p>À partir de 5000 FCFA / mois</p>
-<button class="btn" onclick="alert('Inscription bientôt disponible')">Commencer l'essai gratuit</button>
+<div class="container">
+<!-- LOGIN -->
+<div id="loginView">
+<div class="logo"><div class="logo-icon">⚙️</div><h1>GaragePro</h1><p class="subtitle">Auto Garage Management • Africa</p></div>
+<h2 style="text-align:center;margin:20px 0">Welcome Back</h2>
+<p style="text-align:center;color:#888;margin-bottom:20px">Sign in to manage your garage operations</p>
+<input type="email" id="email" placeholder="Email address">
+<input type="password" id="password" placeholder="Password">
+<button class="btn" onclick="login()">Sign In</button>
+<p style="text-align:center;margin-top:20px;color:#888">Don't have an account? <a href="#" style="color:#00e676" onclick="signup()">Sign Up</a></p>
+<p style="text-align:center;margin-top:30px;font-size:12px;color:#555">v2.0 • Secure • Trusted by 500+ Garages in Africa</p>
 </div>
-<div class="cards">
-<div class="card"><h3>🚗 Clients</h3><p>Suivi complet véhicules et historique</p></div>
-<div class="card"><h3>🔧 Réparations</h3><p>Devis et suivi en temps réel</p></div>
-<div class="card"><h3>💰 Facturation</h3><p>Factures pro + Mobile Money</p></div>
+
+<!-- DASHBOARD -->
+<div id="dashView" class="hidden">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:20px 0">
+<div><div style="display:flex;align-items:center;gap:10px"><div class="logo-icon" style="width:40px;height:40px;font-size:20px;margin:0">⚙️</div><h2>GaragePro</h2></div>
+<p style="color:#888;font-size:14px;margin-top:5px" id="welcomeMsg">Good morning</p></div>
+<div style="font-size:24px">🔔</div>
 </div>
+
+<div class="card revenue"><h3>Revenue This Month</h3><div class="amount" id="revMonth">0 FCFA</div><div style="font-size:13px">+12.5% vs last month ↑</div></div>
+
+<div class="grid">
+<div class="stat"><div class="icon">🔧</div><div class="val" id="activeJobs">0</div><div class="lbl">Active Jobs</div></div>
+<div class="stat"><div class="icon">🚗</div><div class="val" id="vehCount">0</div><div class="lbl">Vehicles In Garage</div></div>
+<div class="stat"><div class="icon">📄</div><div class="val" id="unpaid">0</div><div class="lbl">Unpaid Invoices</div></div>
+<div class="stat"><div class="icon">💰</div><div class="val">--</div><div class="lbl">Expenses</div></div>
+</div>
+
+<div class="card"><h3>Recent Invoices</h3><div id="invoiceList" style="margin-top:15px">Chargement...</div></div>
+<div style="height:80px"></div>
+</div>
+</div>
+
+<div class="nav hidden" id="bottomNav">
+<a href="#" class="active">📊<br>Dashboard</a>
+<a href="#">🚗<br>Vehicles</a>
+<a href="#">🧾<br>Invoices</a>
+<a href="#">👥<br>Customers</a>
+</div>
+
+<script>
+const SUPABASE_URL='https://fzoukuaadwvnnppkiqkf.supabase.co';
+const SUPABASE_KEY='sb_publishable_JKJdHn9ciVp2Rh8Fbr62Hg_Neh8uNGL';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+async function login(){
+ const e=document.getElementById('email').value, p=document.getElementById('password').value;
+ const {error}=await sb.auth.signInWithPassword({email:e,password:p});
+ if(error) alert(error.message); else showDash();
+}
+async function signup(){
+ const e=document.getElementById('email').value, p=document.getElementById('password').value;
+ const {error}=await sb.auth.signUp({email:e,password:p});
+ if(error) alert(error.message); else alert('Compte créé ! Connectez-vous.');
+}
+async function showDash(){
+ document.getElementById('loginView').classList.add('hidden');
+ document.getElementById('dashView').classList.remove('hidden');
+ document.getElementById('bottomNav').classList.remove('hidden');
+ const {data:{user}}=await sb.auth.getUser();
+ if(user) document.getElementById('welcomeMsg').innerText='Bonjour, '+user.email;
+ loadData();
+}
+async function loadData(){
+ const {data} = await sb.from('votre_table').select('*').limit(10);
+ if(data){
+   document.getElementById('vehCount').innerText=data.length;
+   document.getElementById('invoiceList').innerHTML=data.map(d=>`<div style="padding:10px 0;border-bottom:1px solid #222"><b>${d.id||'INV'}</b> <span class="badge badge-green">Payé</span></div>`).join('')||'Aucune donnée';
+ }
+}
+sb.auth.getSession().then(({data:{session}})=>{ if(session) showDash(); });
+</script>
 </body>
 </html>
