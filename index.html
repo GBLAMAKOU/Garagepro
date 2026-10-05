@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GaragePro SaaS</title>
+<title>GaragePro SaaS - 5000F</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}
@@ -21,15 +20,16 @@ input,textarea,select{width:100%;padding:13px;border:1.5px solid #e5e7eb;border-
 .fbtn{padding:9px 16px;border-radius:20px;border:1.5px solid #16a34a;background:white;color:#16a34a;font-size:13px;font-weight:600}.fbtn.active{background:#16a34a;color:white}
 .stats{display:flex;gap:8px;margin-bottom:12px}.stat{flex:1;background:white;padding:12px;border-radius:14px;text-align:center}.stat b{display:block;font-size:20px}.stat span{font-size:11px;color:#666}
 .hidden{display:none!important}
+.paywall{background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;border-radius:18px;padding:20px;text-align:center;margin:14px 0}
 </style>
 </head>
 <body>
-<div class="header"><h1>🔧 GaragePro</h1><p id="headerSub" style="opacity:.9;font-size:14px">Ton garage, sécurisé dans le cloud</p></div>
+<div class="header"><h1>🔧 GaragePro</h1><p style="opacity:.9;font-size:14px">5000F/mois - Ton garage dans le cloud</p></div>
 <div id="authBox" class="auth-card">
 <h2 id="authTitle">Connexion</h2>
-<p style="font-size:13px;color:#666;margin:8px 0 14px">Chaque garage a ses données privées.</p>
+<p style="font-size:13px;color:#666;margin:8px 0 14px">7 jours gratuits, puis 5000F/mois</p>
 <input id="email" type="email" placeholder="Email">
-<input id="password" type="password" placeholder="Mot de passe min 6">
+<input id="password" type="password" placeholder="Mot de passe (min 6)">
 <input id="garageName" type="text" placeholder="Nom de ton garage" class="hidden">
 <button class="btn btn-green" onclick="handleAuth()" id="authBtn">Se connecter</button>
 <button class="btn btn-outline" onclick="toggleAuthMode()" id="toggleBtn">Pas de compte ? Créer mon garage</button>
@@ -40,7 +40,9 @@ input,textarea,select{width:100%;padding:13px;border:1.5px solid #e5e7eb;border-
 <small id="userInfo" style="font-weight:600"></small>
 <button onclick="logout()" style="border:none;background:#fee2e2;color:#991b1b;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700">Déconnexion</button>
 </div>
-<div class="stats"><div class="stat"><b id="totalCars">0</b><span>🚗</span></div><div class="stat"><b id="totalDette" style="color:#dc2626">0F</b><span>💰 Dettes</span></div><div class="stat"><b id="totalVid">0</b><span>🛢️</span></div></div>
+<div id="trialBox" class="paywall hidden"></div>
+<div id="mainContent">
+<div class="stats"><div class="stat"><b id="totalCars">0</b><span>🚗 Voitures</span></div><div class="stat"><b id="totalDette" style="color:#dc2626">0F</b><span>💰 Dettes</span></div><div class="stat"><b id="totalVid">0</b><span>🛢️ Vidange</span></div></div>
 <input id="search" class="search" placeholder="🔍 Rechercher plaque..." oninput="render()">
 <div style="display:flex;gap:8px;margin-bottom:12px"><button class="fbtn active" onclick="setFilter('all',this)">Toutes</button><button class="fbtn" onclick="setFilter('dette',this)">💰 Non payé</button><button class="fbtn" onclick="setFilter('vidange',this)">🛢️ Vidange</button></div>
 <div class="auth-card" style="border:2px dashed #16a34a"><h2 style="font-size:18px;margin-bottom:10px">+ Nouvelle intervention</h2>
@@ -49,23 +51,73 @@ input,textarea,select{width:100%;padding:13px;border:1.5px solid #e5e7eb;border-
 <textarea id="panne" placeholder="Panne" rows="2"></textarea><textarea id="travaux" placeholder="Travaux (mets 'vidange' pour rappel)" rows="2"></textarea>
 <select id="paiement" onchange="document.getElementById('resteWrap').style.display=this.value==='paye'?'none':'block'"><option value="paye">✅ Payé</option><option value="non_paye">❌ Non payé</option><option value="avance">⚠️ Avance</option></select>
 <div id="resteWrap" style="display:none"><input id="reste" type="number" placeholder="Reste dû F"></div>
-<button class="btn" onclick="saveIntervention()" id="saveBtn">💾 Enregistrer</button></div><div id="list"></div></div>
+<button class="btn" onclick="saveIntervention()" id="saveBtn">💾 Enregistrer</button></div>
+<div id="list"></div>
+</div>
+</div>
 <script>
 const SUPABASE_URL = 'https://fzoukuaadwvnnppkiqkf.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_JKJdHn9ciVp2Rh8Fbr62Hg_Neh8uNGL';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let isLoginMode=true,currentUser=null,interventions=[],filter='all';
-function toggleAuthMode(){isLoginMode=!isLoginMode;document.getElementById('authTitle').textContent=isLoginMode?'Connexion':'Crée ton garage';document.getElementById('authBtn').textContent=isLoginMode?'Se connecter':'Créer mon garage → Gratuit';document.getElementById('toggleBtn').textContent=isLoginMode?'Pas de compte ? Créer mon garage':'Déjà un compte ? Se connecter';document.getElementById('garageName').classList.toggle('hidden',isLoginMode);document.getElementById('authMsg').textContent='';}
-async function handleAuth(){const email=document.getElementById('email').value.trim();const password=document.getElementById('password').value.trim();const garageName=document.getElementById('garageName').value.trim();const msg=document.getElementById('authMsg');const btn=document.getElementById('authBtn');if(!email||!password){msg.textContent='Remplis email et mot de passe';return}if(password.length<6){msg.textContent='Min 6 caractères';return}btn.textContent='Chargement...';btn.disabled=true;msg.textContent='';try{if(isLoginMode){const{data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;}else{if(!garageName){msg.textContent='Mets le nom de ton garage';btn.textContent='Créer';btn.disabled=false;return}const{data,error}=await supabaseClient.auth.signUp({email,password,options:{data:{garage_name:garageName}}});if(error)throw error;if(data.user){await supabaseClient.from('profiles').insert({id:data.user.id,garage_name:garageName,email});msg.style.color='#16a34a';msg.textContent='Compte créé ! Vérifie email si demandé, puis connecte-toi.';toggleAuthMode();btn.textContent='Se connecter';btn.disabled=false;return;}}checkUser();}catch(e){msg.style.color='#dc2626';msg.textContent=e.message;btn.textContent=isLoginMode?'Se connecter':'Créer';btn.disabled=false}}
-async function checkUser(){const{data}=await supabaseClient.auth.getUser();if(data.user){currentUser=data.user;document.getElementById('authBox').classList.add('hidden');document.getElementById('appBox').classList.remove('hidden');document.getElementById('userInfo').textContent='👋 '+(currentUser.user_metadata.garage_name||currentUser.email);loadData();}else{document.getElementById('authBox').classList.remove('hidden');document.getElementById('appBox').classList.add('hidden');}}
-async function logout(){await supabaseClient.auth.signOut();location.reload();}
-async function loadData(){const{data}=await supabaseClient.from('interventions').select('*').order('created_at',{ascending:false});interventions=data||[];render();}
-async function saveIntervention(){const btn=document.getElementById('saveBtn');const plaque=document.getElementById('plaque').value.trim().toUpperCase();if(!plaque){alert('Plaque obligatoire');return}const client=document.getElementById('client').value.trim()||'Client';const km=parseInt(document.getElementById('km').value)||0;const prix=parseInt(document.getElementById('prix').value)||0;const panne=document.getElementById('panne').value.trim();const travaux=document.getElementById('travaux').value.trim();const paiement=document.getElementById('paiement').value;let reste=parseInt(document.getElementById('reste').value)||0;if(paiement==='non_paye'&&reste===0)reste=prix;const is_vidange=travaux.toLowerCase().includes('vidange');const next_vidange=is_vidange&&km?km+5000:0;btn.textContent='Enregistrement...';btn.disabled=true;const{error}=await supabaseClient.from('interventions').insert({user_id:currentUser.id,plaque,client,km,prix,panne,travaux,paiement,reste,is_vidange,next_vidange});if(error){alert(error.message);btn.textContent='💾 Enregistrer';btn.disabled=false;return}document.getElementById('plaque').value='';document.getElementById('client').value='';document.getElementById('km').value='';document.getElementById('prix').value='';document.getElementById('panne').value='';document.getElementById('travaux').value='';document.getElementById('reste').value='';btn.textContent='💾 Enregistrer';btn.disabled=false;loadData();}
-function setFilter(f,btnEl){filter=f;document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));btnEl.classList.add('active');render();}
-function render(){const q=document.getElementById('search').value.toLowerCase();let filtered=interventions.filter(d=>{const m=(d.plaque+' '+d.client+' '+(d.panne||'')+' '+(d.travaux||'')).toLowerCase().includes(q);if(!m)return false;if(filter==='dette')return d.paiement!=='paye';if(filter==='vidange')return d.is_vidange;return true;});document.getElementById('totalCars').textContent=interventions.length;let dette=interventions.filter(d=>d.paiement!=='paye').reduce((s,d)=>s+(d.reste||0),0);document.getElementById('totalDette').textContent=dette.toLocaleString()+'F';document.getElementById('totalVid').textContent=interventions.filter(d=>d.is_vidange).length;let html='';filtered.forEach(d=>{const debtClass=d.paiement!=='paye'?'debt':'';const badge=d.paiement==='paye'?`<span class="badge badge-pay">✅ Payé</span>`:`<span class="badge badge-unpay">❌ Reste: ${d.reste}F</span>`;const vid=d.is_vidange?`<span class="badge badge-warn">🛢️ ${d.next_vidange} km</span>`:'';html+=`<div class="item ${debtClass}"><div style="display:flex;justify-content:space-between"><b>${d.plaque}</b><small>${new Date(d.created_at).toLocaleDateString()}</small></div><small>${d.client} • ${d.km} km • ${d.prix}F</small><div style="margin:8px 0">${badge} ${vid}</div><div style="font-size:13px"><b>Panne:</b> ${d.panne||'-'}<br><b>Travaux:</b> ${d.travaux||'-'}</div><div style="margin-top:10px;display:flex;gap:6px"><button onclick="markPaye('${d.id}')" style="flex:1;padding:8px;border-radius:10px;border:1px solid #16a34a;background:#f0fdf4;color:#16a34a;font-weight:700">✅ Payé</button><button onclick="delItem('${d.id}')" style="padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:white">🗑️</button></div></div>`;});document.getElementById('list').innerHTML=html||'<p style="text-align:center;color:#999;margin-top:24px">Aucune voiture</p>';}
-async function markPaye(id){await supabaseClient.from('interventions').update({paiement:'paye',reste:0}).eq('id',id);loadData();}
-async function delItem(id){if(confirm('Supprimer ?')){await supabaseClient.from('interventions').delete().eq('id',id);loadData();}}
-checkUser();
-</script>
-</body>
-</html>
+const MON_NUMERO_MOMO = '01 53 43 65 98';
+let isLoginMode=true,currentUser=null,interventions=[],filter='all',userProfile=null;
+function toggleAuthMode(){isLoginMode=!isLoginMode;document.getElementById('authTitle').textContent=isLoginMode?'Connexion':'Crée ton garage';document.getElementById('authBtn').textContent=isLoginMode?'Se connecter':'Créer mon garage → 7j gratuit';document.getElementById('toggleBtn').textContent=isLoginMode?'Pas de compte ? Créer mon garage':'Déjà un compte ? Se connecter';document.getElementById('garageName').classList.toggle('hidden',isLoginMode);document.getElementById('authMsg').textContent='';}
+async function handleAuth(){
+ const email=document.getElementById('email').value.trim();
+ const password=document.getElementById('password').value.trim();
+ const garageName=document.getElementById('garageName').value.trim();
+ const msg=document.getElementById('authMsg');
+ const btn=document.getElementById('authBtn');
+ if(!email||!password){msg.textContent='Remplis email et mdp';return}
+ if(password.length<6){msg.textContent='Min 6 caractères';return}
+ btn.textContent='Chargement...';btn.disabled=true;
+ try{
+  if(isLoginMode){
+   const{data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+   if(error)throw error;
+  }else{
+   if(!garageName){msg.textContent='Nom garage obligatoire';btn.disabled=false;btn.textContent='Créer';return}
+   const{data,error}=await supabaseClient.auth.signUp({email,password,options:{data:{garage_name:garageName}}});
+   if(error)throw error;
+   if(data.user){
+    await supabaseClient.from('profiles').insert({id:data.user.id,garage_name:garageName,email,trial_ends_at:new Date(Date.now()+7*24*60*60*1000).toISOString()});
+    msg.style.color='#16a34a';msg.textContent='Compte créé ! Connecte-toi.';
+    toggleAuthMode();btn.textContent='Se connecter';btn.disabled=false;return;
+   }
+  }
+  checkUser();
+ }catch(e){msg.style.color='#dc2626';msg.textContent=e.message;btn.textContent=isLoginMode?'Se connecter':'Créer';btn.disabled=false}
+}
+async function checkUser(){
+ const{data}=await supabaseClient.auth.getUser();
+ if(data.user){
+  currentUser=data.user;
+  const{data:profile}=await supabaseClient.from('profiles').select('*').eq('id',currentUser.id).single();
+  userProfile=profile;
+  document.getElementById('authBox').classList.add('hidden');
+  document.getElementById('appBox').classList.remove('hidden');
+  document.getElementById('userInfo').textContent='👋 '+(profile?.garage_name||currentUser.email);
+  checkSubscription();
+  loadData();
+ }else{
+  document.getElementById('authBox').classList.remove('hidden');
+  document.getElementById('appBox').classList.add('hidden');
+ }
+}
+function checkSubscription(){
+ const box=document.getElementById('trialBox');
+ const main=document.getElementById('mainContent');
+ if(!userProfile)return;
+ const now=new Date();
+ const trialEnd=userProfile.trial_ends_at?new Date(userProfile.trial_ends_at):new Date(now.getTime()+7*24*60*60*1000);
+ const isSub=userProfile.is_subscribed && userProfile.subscription_ends_at && new Date(userProfile.subscription_ends_at)>now;
+ if(isSub){
+  const daysLeft=Math.ceil((new Date(userProfile.subscription_ends_at)-now)/(1000*60*60*24));
+  box.innerHTML=`<p style="font-weight:700;color:#166534">✅ Abonnement actif - ${daysLeft} jours restants</p>`;
+  box.classList.remove('hidden');box.style.background='#dcfce7';box.style.borderColor='#16a34a';
+  main.classList.remove('hidden');return;
+ }
+ const daysLeftTrial=Math.ceil((trialEnd-now)/(1000*60*60*24));
+ if(daysLeftTrial>0){
+  box.innerHTML=`<p style="font-weight:700">🎁 Essai gratuit : ${daysLeftTrial} jour(s) restants</p><p style="font-size:13px;margin-top:6px">Après, 5000F/mois pour continuer</p>`;
+  box.class
