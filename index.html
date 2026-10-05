@@ -4,50 +4,142 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GaragePro - Mémoire</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<meta name="theme-color" content="#16a34a">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}
+body{background:#f5f5f5;padding:12px;padding-bottom:90px}
+.header{background:#16a34a;color:white;padding:16px;border-radius:16px;text-align:center;margin-bottom:12px}
+.search{width:100%;padding:14px;border-radius:12px;border:1px solid #ddd;font-size:16px;margin-bottom:10px}
+.filters{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto}
+.fbtn{padding:8px 14px;border-radius:20px;border:1px solid #16a34a;background:white;color:#16a34a;font-size:13px;white-space:nowrap}
+.fbtn.active{background:#16a34a;color:white}
+.card{background:white;border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:14px}
+input,textarea,select{width:100%;padding:13px;border:1px solid #e5e7eb;border-radius:10px;font-size:15px;margin-bottom:10px;background:#fafafa}
+textarea{min-height:65px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.btn{background:black;color:white;border:none;width:100%;padding:15px;border-radius:12px;font-size:16px;font-weight:700}
+.badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;margin-top:4px}
+.badge-pay{background:#dcfce7;color:#166534}
+.badge-unpay{background:#fee2e2;color:#991b1b}
+.badge-warn{background:#fef9c3;color:#854d0e}
+.item{background:white;border-radius:14px;padding:14px;margin-bottom:10px;border-left:5px solid #16a34a}
+.item.debt{border-left-color:#dc2626}
+.stats{display:flex;gap:8px;margin-bottom:10px}
+.stat{flex:1;background:white;padding:10px;border-radius:12px;text-align:center}
+.stat b{display:block;font-size:18px}
+</style>
 </head>
-<body class="bg-gray-100 p-4">
-<div class="max-w-md mx-auto">
-  <h1 class="text-2xl font-bold mb-1">GaragePro</h1>
-  <p class="text-sm text-gray-600 mb-4">Mémoire du garage - BH 34 30 RB</p>
-  
-  <input id="search" placeholder="Rechercher plaque BH..." class="w-full p-3 rounded-lg border mb-4" oninput="afficher()">
-
-  <div class="bg-white p-4 rounded-xl shadow mb-6">
-    <h2 class="font-bold mb-3">Nouvelle intervention</h2>
-    <input id="plaque" placeholder="Plaque ex: BH 3430 RB" class="w-full p-2 border rounded mb-2">
-    <input id="client" placeholder="Nom client ex: Michel" class="w-full p-2 border rounded mb-2">
-    <input id="km" placeholder="Kilométrage ex: 250800" class="w-full p-2 border rounded mb-2">
-    <textarea id="panne" placeholder="Panne voiture" class="w-full p-2 border rounded mb-2"></textarea>
-    <textarea id="travaux" placeholder="Travaux effectués" class="w-full p-2 border rounded mb-2"></textarea>
-    <input id="prix" placeholder="Prix ex: 17000F" class="w-full p-2 border rounded mb-3">
-    <button onclick="ajouter()" class="w-full bg-black text-white p-3 rounded-lg font-bold">Enregistrer</button>
-  </div>
-
-  <div id="liste"></div>
+<body>
+<div class="header">
+<h1>🔧 GaragePro</h1>
+<p>Mémoire BH + Dette + Vidange</p>
 </div>
+
+<div class="stats">
+<div class="stat"><b id="totalCars">0</b><span>Voitures</span></div>
+<div class="stat"><b id="totalDette" style="color:#dc2626">0F</b><span>Dettes</span></div>
+<div class="stat"><b id="totalVid">0</b><span>Vidanges</span></div>
+</div>
+
+<input id="search" class="search" placeholder="Rechercher plaque BH, client..." oninput="render()">
+
+<div class="filters">
+<button class="fbtn active" onclick="setFilter('all',this)">Toutes</button>
+<button class="fbtn" onclick="setFilter('dette',this)">💰 Non payé</button>
+<button class="fbtn" onclick="setFilter('vidange',this)">🛢️ Vidange</button>
+<button class="fbtn" onclick="setFilter('BH',this)">BH</button>
+</div>
+
+<div class="card">
+<h2>Nouvelle intervention</h2>
+<input id="plaque" placeholder="Plaque ex: BH 3430 RB">
+<input id="client" placeholder="Nom client ex: Michel">
+<div class="row">
+<input id="km" type="number" placeholder="Kilométrage">
+<input id="prix" type="number" placeholder="Prix ex: 30000">
+</div>
+<textarea id="panne" placeholder="Panne voiture"></textarea>
+<textarea id="travaux" placeholder="Travaux effectués"></textarea>
+<div class="row">
+<select id="paiement">
+<option value="paye">✅ Payé total</option>
+<option value="non_paye">❌ Non payé</option>
+<option value="avance">⚠️ Avance payée</option>
+</select>
+<input id="reste" type="number" placeholder="Reste dû" style="display:none">
+</div>
+<button class="btn" onclick="save()">Enregistrer</button>
+</div>
+
+<div id="list"></div>
+
 <script>
-let data = JSON.parse(localStorage.getItem('garagepro')||'[]');
-function ajouter(){
-  if(!plaque.value) return alert('Mets la plaque');
-  data.unshift({plaque:plaque.value.toUpperCase(), client:client.value, km:km.value, panne:panne.value, travaux:travaux.value, prix:prix.value, date:new Date().toLocaleDateString()});
-  localStorage.setItem('garagepro', JSON.stringify(data));
-  plaque.value=client.value=km.value=panne.value=travaux.value=prix.value='';
-  afficher();
+let filter='all';
+let data=JSON.parse(localStorage.getItem('garageProV2')||'[]');
+document.getElementById('paiement').addEventListener('change',e=>{
+ document.getElementById('reste').style.display = e.target.value==='paye' ? 'none' : 'block';
+});
+function save(){
+ const plaque=document.getElementById('plaque').value.trim().toUpperCase();
+ const client=document.getElementById('client').value.trim();
+ const km=parseInt(document.getElementById('km').value)||0;
+ const prix=parseInt(document.getElementById('prix').value)||0;
+ const panne=document.getElementById('panne').value.trim();
+ const travaux=document.getElementById('travaux').value.trim();
+ const paiement=document.getElementById('paiement').value;
+ const reste=parseInt(document.getElementById('reste').value)|| (paiement==='non_paye'?prix:0);
+ if(!plaque){alert('Mets la plaque BH');return}
+ const isVidange = travaux.toLowerCase().includes('vidange');
+ const nextVidange = isVidange && km ? km+5000 : 0;
+ const item={id:Date.now(),date:new Date().toLocaleDateString('fr-FR'),plaque,client,km,prix,panne,travaux,paiement,reste,isVidange,nextVidange};
+ data.unshift(item);
+ localStorage.setItem('garageProV2',JSON.stringify(data));
+ document.getElementById('plaque').value='';document.getElementById('client').value='';
+ document.getElementById('km').value='';document.getElementById('prix').value='';
+ document.getElementById('panne').value='';document.getElementById('travaux').value='';
+ document.getElementById('reste').value='';
+ render();
 }
-function afficher(){
-  let q = search.value.toUpperCase();
-  let filtre = data.filter(d=>d.plaque.includes(q));
-  liste.innerHTML = filtre.map(d=>`
-    <div class="bg-white p-4 rounded-xl shadow mb-3 border-l-4 border-black">
-      <div class="flex justify-between"><b>${d.plaque}</b><span class="text-xs">${d.date}</span></div>
-      <div class="text-sm text-gray-600">${d.client} - ${d.km} km - ${d.prix}</div>
-      <div class="mt-2 text-sm"><b>Panne:</b> ${d.panne}</div>
-      <div class="text-sm"><b>Travaux:</b> ${d.travaux}</div>
-    </div>
-  `).join('') || '<p class="text-center text-gray-400 mt-10">Aucun résultat</p>';
+function setFilter(f,btn){
+ filter=f;
+ document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+ btn.classList.add('active');
+ render();
 }
-afficher();
+function render(){
+ const q=document.getElementById('search').value.toLowerCase();
+ let filtered=data.filter(d=>{
+  const matchQ = (d.plaque+' '+d.client+' '+d.panne+' '+d.travaux).toLowerCase().includes(q);
+  if(!matchQ) return false;
+  if(filter==='dette') return d.paiement!=='paye';
+  if(filter==='vidange') return d.isVidange;
+  if(filter==='BH') return d.plaque.includes('BH');
+  return true;
+ });
+ document.getElementById('totalCars').textContent=data.length;
+ let dette=data.filter(d=>d.paiement!=='paye').reduce((s,d)=>s+d.reste,0);
+ document.getElementById('totalDette').textContent=dette.toLocaleString()+'F';
+ document.getElementById('totalVid').textContent=data.filter(d=>d.isVidange).length;
+ let html='';
+ filtered.forEach(d=>{
+  const debtClass = d.paiement!=='paye' ? 'debt' : '';
+  const badge = d.paiement==='paye' ? `<span class="badge badge-pay">Payé ${d.prix}F</span>` : `<span class="badge badge-unpay">Reste dû: ${d.reste}F</span>`;
+  const vid = d.isVidange ? `<span class="badge badge-warn">🛢️ Prochaine à ${d.nextVidange} km</span>` : '';
+  html+=`<div class="item ${debtClass}">
+   <div style="display:flex;justify-content:space-between"><b>${d.plaque}</b><small>${d.date}</small></div>
+   <small>${d.client} - ${d.km} km - ${d.prix}F</small><br>${badge} ${vid}<br>
+   <div style="margin-top:6px"><b>Panne:</b> ${d.panne}</div>
+   <div><b>Travaux:</b> ${d.travaux}</div>
+   <div style="margin-top:8px;display:flex;gap:6px">
+   <button onclick="markPaye(${d.id})" style="flex:1;padding:6px;border-radius:8px;border:1px solid #16a34a;background:white;font-size:12px">Marquer payé</button>
+   <button onclick="del(${d.id})" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:white">🗑️</button>
+   </div></div>`;
+ });
+ document.getElementById('list').innerHTML=html||'<p style="text-align:center;color:#999;margin-top:20px">Aucune voiture</p>';
+}
+function markPaye(id){let i=data.find(d=>d.id===id);if(i){i.paiement='paye';i.reste=0;localStorage.setItem('garageProV2',JSON.stringify(data));render();}}
+function del(id){if(confirm('Supprimer ?')){data=data.filter(d=>d.id!==id);localStorage.setItem('garageProV2',JSON.stringify(data));render();}}
+render();
 </script>
 </body>
 </html>
