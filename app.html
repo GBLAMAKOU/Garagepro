@@ -1,1 +1,53 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GaragePro App</title><style>body{font-family:sans-serif;background:#f3f4f6;margin:0;padding:15px}input{width:100%;padding:12px;margin:6px 0;border:1px solid #ddd;border-radius:8px;box-sizing:border-box}.card{background:white;padding:15px;border-radius:12px;margin-bottom:12px}.repair{border-left:3px solid #16a34a;background:#f0fdf4;padding:8px;margin:6px 0;border-radius:0 8px 8px 0}.btn{width:100%;padding:14px;background:#16a34a;color:white;border:none;border-radius:10px;font-weight:bold}</style></head><body><h2>🔧 GaragePro - Mémoire</h2><input id="search" placeholder="🔍 Rechercher plaque: BH..." oninput="afficher()" style="border:2px solid #2563eb"><div class="card"><h3>Ajouter réparation</h3><input id="plaque" placeholder="Plaque ex: BH 34 30 RB"><input id="nom" placeholder="Nom client"><input id="panne" placeholder="Travail fait"><input id="prix" type="number" placeholder="Prix FCFA"><input id="km" type="number" placeholder="KM"><button class="btn" onclick="ajouter()">Enregistrer aujourd'hui</button></div><div id="liste"></div><script>let g=JSON.parse(localStorage.getItem('garagepro_history')||'[]');function ajouter(){let p=document.getElementById('plaque').value.toUpperCase().trim();if(!p)return alert('Plaque?');let v=g.find(x=>x.plaque===p);if(!v){v={plaque:p,nom:document.getElementById('nom').value,reparations:[]};g.push(v);}v.reparations.unshift({date:new Date().toLocaleDateString('fr-FR'),panne:document.getElementById('panne').value,prix:document.getElementById('prix').value,km:document.getElementById('km').value});localStorage.setItem('garagepro_history',JSON.stringify(g));afficher();}function afficher(){let s=document.getElementById('search').value.toUpperCase();let h='';g.filter(v=>v.plaque.includes(s)).forEach(v=>{h+=`<div class=card><b>${v.plaque}</b> - ${v.nom}<br><small>${v.reparations.length} interventions</small>`;v.reparations.forEach(r=>{h+=`<div class=repair><b>${r.date}</b> - ${r.panne}<br>${r.prix}F | ${r.km}km</div>`});h+=`</div>`});document.getElementById('liste').innerHTML=h;}afficher();</script></body></html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GaragePro - Mémoire</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4">
+<div class="max-w-md mx-auto">
+  <h1 class="text-2xl font-bold mb-1">GaragePro</h1>
+  <p class="text-sm text-gray-600 mb-4">Mémoire du garage - BH 34 30 RB</p>
+  
+  <input id="search" placeholder="Rechercher plaque BH..." class="w-full p-3 rounded-lg border mb-4" oninput="afficher()">
+
+  <div class="bg-white p-4 rounded-xl shadow mb-6">
+    <h2 class="font-bold mb-3">Nouvelle intervention</h2>
+    <input id="plaque" placeholder="Plaque ex: BH 3430 RB" class="w-full p-2 border rounded mb-2">
+    <input id="client" placeholder="Nom client ex: Michel" class="w-full p-2 border rounded mb-2">
+    <input id="km" placeholder="Kilométrage ex: 250800" class="w-full p-2 border rounded mb-2">
+    <textarea id="panne" placeholder="Panne qui a amené la voiture" class="w-full p-2 border rounded mb-2"></textarea>
+    <textarea id="travaux" placeholder="Travaux effectués" class="w-full p-2 border rounded mb-2"></textarea>
+    <input id="prix" placeholder="Prix ex: 17000F" class="w-full p-2 border rounded mb-3">
+    <button onclick="ajouter()" class="w-full bg-black text-white p-3 rounded-lg font-bold">Enregistrer</button>
+  </div>
+
+  <div id="liste"></div>
+</div>
+<script>
+let data = JSON.parse(localStorage.getItem('garagepro')||'[]');
+function ajouter(){
+  if(!plaque.value) return alert('Mets la plaque');
+  data.unshift({plaque:plaque.value.toUpperCase(), client:client.value, km:km.value, panne:panne.value, travaux:travaux.value, prix:prix.value, date:new Date().toLocaleDateString()});
+  localStorage.setItem('garagepro', JSON.stringify(data));
+  plaque.value=client.value=km.value=panne.value=travaux.value=prix.value='';
+  afficher();
+}
+function afficher(){
+  let q = search.value.toUpperCase();
+  let filtre = data.filter(d=>d.plaque.includes(q));
+  liste.innerHTML = filtre.map(d=>`
+    <div class="bg-white p-4 rounded-xl shadow mb-3 border-l-4 border-black">
+      <div class="flex justify-between"><b>${d.plaque}</b><span class="text-xs">${d.date}</span></div>
+      <div class="text-sm text-gray-600">${d.client} - ${d.km} km - ${d.prix}</div>
+      <div class="mt-2 text-sm"><b>Panne:</b> ${d.panne}</div>
+      <div class="text-sm"><b>Travaux:</b> ${d.travaux}</div>
+    </div>
+  `).join('') || '<p class="text-center text-gray-400 mt-10">Aucun résultat</p>';
+}
+afficher();
+</script>
+</body>
+</html>
