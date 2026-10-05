@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - GaragePro</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}
+body{background:#0f172a;color:white;padding:14px;max-width:600px;margin:0 auto}
+.card{background:#1e293b;border-radius:16px;padding:16px;margin-bottom:12px;border:1px solid #334155}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:white;margin:8px 0}
+.btn{width:100%;padding:12px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+.btn-green{background:#16a34a;color:white}.btn-red{background:#dc2626;color:white}.btn-gray{background:#334155;color:white}
+.badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700}
+.b-wait{background:#fef9c3;color:#854d0e}.b-ok{background:#dcfce7;color:#166534}.b-no{background:#fee2e2;color:#991b1b}
+.stat{display:flex;gap:8px;margin:12px 0}.stat div{flex:1;background:#1e293b;padding:12px;border-radius:12px;text-align:center;border:1px solid #334155}
+</style>
+</head>
+<body>
+<h2 style="margin:10px 0">🔐 Admin GaragePro - 0153436598</h2>
+<div id="loginBox" class="card">
+<p style="font-size:13px;color:#94a3b8">Connecte-toi avec TON email admin</p>
+<input id="email" placeholder="ton email admin">
+<input id="pass" type="password" placeholder="ton mot de passe">
+<button class="btn btn-green" onclick="login()">Connexion Admin</button>
+<p id="msg" style="font-size:12px;color:#f87171;margin-top:8px"></p>
+</div>
+<div id="adminBox" style="display:none">
+<div class="stat">
+<div><b id="nbWait">0</b><br><span style="font-size:11px">En attente</span></div>
+<div><b id="nbOk">0</b><br><span style="font-size:11px">Validés</span></div>
+<div><b id="nbUsers">0</b><br><span style="font-size:11px">Garages</span></div>
+<div><b id="nbMoney">0F</b><br><span style="font-size:11px">Encaissé</span></div>
+</div>
+<h3 style="margin:16px 0 8px">💰 Paiements 5000F</h3>
+<div id="payments"></div>
+<h3 style="margin:16px 0 8px">🏢 Tous les garages</h3>
+<div id="profiles"></div>
+<button class="btn btn-gray" onclick="logout()" style="margin-top:20px">Déconnexion</button>
+</div>
+<script>
+const SUPABASE_URL = 'https://fzoukuaadwvnnppkiqkf.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_JKJdHn9ciVp2Rh8Fbr62Hg_Neh8uNGL';
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+async function login(){
+ const email=document.getElementById('email').value.trim();
+ const pass=document.getElementById('pass').value.trim();
+ const m=document.getElementById('msg');
+ const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:pass});
+ if(error){m.textContent=error.message;return}
+ document.getElementById('loginBox').style.display='none';
+ document.getElementById('adminBox').style.display='block';
+ loadAll();
+}
+async function logout(){await supabaseClient.auth.signOut();location.reload();}
+async function loadAll(){
+ const {data:pays}=await supabaseClient.from('payments').select('*').order('created_at',{ascending:false});
+ const {data:profs}=await supabaseClient.from('profiles').select('*').order('created_at',{ascending:false});
+ document.getElementById('nbWait').textContent=(pays||[]).filter(p=>p.status==='en_attente').length;
+ document.getElementById('nbOk').textContent=(pays||[]).filter(p=>p.status==='valide').length;
+ document.getElementById('nbUsers').textContent=(profs||[]).length;
+ document.getElementById('nbMoney').textContent=((pays||[]).filter(p=>p.status==='valide').length*5000).toLocaleString()+'F';
+ let h='';(pays||[]).forEach(p=>{
+  const badge=p.status==='valide'?'<span class="badge b-ok">✅ VALIDE</span>':p.status==='refuse'?'<span class="badge b-no">❌</span>':'<span class="badge b-wait">⏳ EN ATTENTE</span>';
+  h+=`<div class="card"><div style="display:flex;justify-content:space-between"><b>${p.garage_name||'Garage'}</b>${badge}</div><div style="font-size:12px;color:#94a3b8;margin:6px 0">${p.email}<br>MoMo: ${p.momo_number} • ${p.amount}F • ${new Date(p.created_at).toLocaleString()}</div>${p.status==='en_attente'?`<div style="display:flex;gap:8px"><button class="btn btn-green" style="flex:1" onclick="validatePay('${p.id}','${p.email}','${p.user_id}')">✅ Activer 30j</button><button class="btn btn-red" style="flex:0.5" onclick="refusePay('${p.id}')">❌</button></div>`:''}</div>`;
+ });
+ document.getElementById('payments').innerHTML=h||'<p style="color:#64748b">Aucun paiement</p>';
+ let hp='';(profs||[]).forEach(pr=>{
+  const now=new Date();const sub=pr.is_subscribed&&pr.subscription_ends_at&&new Date(pr.subscription_ends_at)>now;const trialEnd=pr.trial_ends_at?new Date(pr.trial_ends_at):null;const inTrial=trialEnd&&trialEnd>now&&!sub;
+  let status=sub?`<span class="badge b-ok">✅ Actif jusqu'au ${new Date(pr.subscription_ends_at).toLocaleDateString()}</span>`:inTrial?`<span class="badge b-wait">🎁 ${Math.ceil((trialEnd-now)/86400000)}j</span>`:`<span class="badge b-no">⏰ Expiré</span>`;
+  hp+=`<div class="card"><div style="display:flex;justify-content:space-between"><b>${pr.garage_name||'-'}</b>${status}</div><div style="font-size:11px;color:#94a3b8">${pr.email}<br>MoMo: ${pr.momo_number||'-'}</div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-green" style="padding:8px;font-size:12px" onclick="activateManually('${pr.id}')">+30j</button><button class="btn btn-gray" style="padding:8px;font-size:12px" onclick="deactivate('${pr.id}')">Désactiver</button></div></div>`;
+ });
+ document.getElementById('profiles').innerHTML=hp;
+}
+async function validatePay(paymentId,email,userId){
+ if(!confirm('Activer '+email+' ?'))return;
+ await supabaseClient.from('payments').update({status:'valide',validated_at:new Date().toISOString()}).eq('id',paymentId);
+ await supabaseClient.from('profiles').update({is_subscribed:true,subscription_ends_at:new Date(Date.now()+30*24*60*60*1000).toISOString()}).eq('id',userId);
+ alert('✅ Activé !');loadAll();
+}
+async function refusePay(id){await supabaseClient.from('payments').update({status:'refuse'}).eq('id',id);loadAll();}
+async function activateManually(profileId){
+ const {data}=await supabaseClient.from('profiles').select('subscription_ends_at').eq('id',profileId).single();
+ let base=new Date();if(data?.subscription_ends_at&&new Date(data.subscription_ends_at)>base)base=new Date(data.subscription_ends_at);
+ const newEnd=new Date(base.getTime()+30*24*60*60*1000);
+ await supabaseClient.from('profiles').update({is_subscribed:true,subscription_ends_at:newEnd.toISOString()}).eq('id',profileId);loadAll();
+}
+async function deactivate(profileId){await supabaseClient.from('profiles').update({is_subscribed:false}).eq('id',profileId);loadAll();}
+</script>
+</body>
+</html>
