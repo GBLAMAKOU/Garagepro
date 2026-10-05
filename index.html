@@ -1,3 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GaragePro</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#16a34a">
 <link rel="icon" href="Screenshot_20261005-174701_1.png">
+<style>
+body{font-family:sans-serif;margin:0;background:#f3f4f6}
+header{background:#16a34a;color:white;padding:16px;text-align:center;font-size:20px;font-weight:bold}
+.card{background:white;margin:12px;padding:16px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+button{background:#16a34a;color:white;border:none;padding:10px 16px;border-radius:8px;width:100%;font-size:16px}
+input{width:100%;padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:8px}
+h3{margin-top:0}
+</style>
+</head>
+<body>
+<header>🔧 GaragePro</header>
+<div class="card">
+<h3>Ajouter un véhicule</h3>
+<input id="client" placeholder="Nom client">
+<input id="voiture" placeholder="Voiture / Immatriculation">
+<input id="panne" placeholder="Panne">
+<button onclick="ajouter()">Enregistrer</button>
+</div>
+<div id="liste"></div>
+<script>
+let data = JSON.parse(localStorage.getItem('garage')||'[]');
+function afficher(){
+  let l=document.getElementById('liste');
+  l.innerHTML='';
+  data.forEach((d,i)=>{
+    l.innerHTML+=`<div class="card"><b>${d.client}</b> - ${d.voiture}<br>${d.panne}<br><small style="color:red" onclick="supprimer(${i})">Supprimer</small></div>`;
+  });
+}
+function ajouter(){
+  let c=document.getElementById('client').value;
+  let v=document.getElementById('voiture').value;
+  let p=document.getElementById('panne').value;
+  if(!c||!v) return alert('Remplis client et voiture');
+  data.push({client:c,voiture:v,panne:p});
+  localStorage.setItem('garage',JSON.stringify(data));
+  document.getElementById('client').value='';document.getElementById('voiture').value='';document.getElementById('panne').value='';
+  afficher();
+}
+function supprimer(i){data.splice(i,1);localStorage.setItem('garage',JSON.stringify(data));afficher();}
+afficher();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+</script>
+</body>
+</html>
