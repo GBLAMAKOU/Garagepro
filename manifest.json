@@ -1,19 +1,19 @@
 {
-  "name": "GaragePro - Mémoire",
+  "name": "GaragePro",
   "short_name": "GaragePro",
-  "description": "Gestion memoire du garage BH 34 30 RB",
-  "start_url": "app.html",
+  "description": "Ton garage dans le cloud - Gestion simple et efficace",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#16a34a",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
