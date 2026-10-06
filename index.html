@@ -121,3 +121,23 @@ function checkSubscription(){
  if(daysLeftTrial>0){
   box.innerHTML=`<p style="font-weight:700">🎁 Essai gratuit : ${daysLeftTrial} jour(s) restants</p><p style="font-size:13px;margin-top:6px">Après, 5000F/mois pour continuer</p>`;
   box.class
+// CORRECTION
+const SUPABASE_URL = "TON_URL_SUPABASE_ICI";
+const SUPABASE_KEY = "TA_CLE_ANON_ICI";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ alert(error.message); return; }
+  window.location.href = "./app.html";
+});
+
+document.getElementById('signupBtn').addEventListener('click', async () => {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if(error){ alert(error.message); return; }
+  alert("Compte créé ! Vérifie ton email.");
+});
