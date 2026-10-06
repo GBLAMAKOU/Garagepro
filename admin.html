@@ -1,46 +1,98 @@
-<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width">
-<title>Admin - GaragePro</title>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GaragePro - Mémoire du Garage</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui}
-body{background:#0f172a;color:white;padding:14px;max-width:600px;margin:0 auto}
-.card{background:#1e293b;border-radius:16px;padding:16px;margin-bottom:12px;border:1px solid #334155}
-.stats{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin:12px 0}
-.s{background:#0f172a;padding:12px;border-radius:12px;text-align:center;border:1px solid #334155}
-.s b{font-size:20px;display:block;color:#22c55e}
-h1{font-size:20px;margin-bottom:10px}
-.item{background:#0f172a;padding:12px;border-radius:12px;margin:8px 0;display:flex;justify-content:space-between;border:1px solid #334155}
-.badge{padding:4px 8px;border-radius:20px;font-size:11px;font-weight:bold}
-.paid{background:#22c55e;color:black}.free{background:#f59e0b;color:black}
-button{width:100%;padding:14px;border-radius:12px;border:none;font-weight:700;background:#22c55e;cursor:pointer}
-</style></head><body>
-<div class="card"><h1>🔐 Admin GaragePro - 0153436598</h1>
-<div class="stats">
-<div class="s"><b id="a">0</b>En attente</div>
-<div class="s"><b id="v">0</b>Validés</div>
-<div class="s"><b id="g">0</b>Garages</div>
-<div class="s"><b id="e">0F</b>Encaissé</div>
-</div>
-<button onclick="load()">🔄 Actualiser</button>
+body{font-family:system-ui;background:#f8fafc;margin:0;padding:15px}
+.card{background:white;border-radius:12px;padding:15px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+input,button{width:100%;padding:12px;border-radius:8px;border:1px solid #ddd;margin:5px 0;box-sizing:border-box}
+button{background:#16a34a;color:white;border:none;font-weight:bold;cursor:pointer}
+.paywall{background:#fef3c7;border:2px solid #f59e0b;padding:20px;text-align:center;border-radius:12px}
+</style>
+</head>
+<body>
+<h2>🔧 GaragePro</h2>
+<input id="search" placeholder="Rechercher plaque ex: BH 3430..." oninput="filtrer()">
+
+<div id="paywall" class="paywall" style="display:none">
+<h3>🚫 Limite gratuite atteinte (3 véhicules)</h3>
+<p>Pour continuer à ajouter des voitures et voir l'historique complet</p>
+<p><b>5000F / mois</b></p>
+<button onclick="window.open('https://wa.me/2290153436598?text=Je veux payer GaragePro 5000F','_blank')">Payer par MoMo - 0153436598</button>
+<p style="font-size:12px">Après paiement, tu seras débloqué en 5 min</p>
 </div>
 
-<div class="card"><h1>💰 Paiements 5000F</h1><div id="pays">Aucun paiement</div></div>
-<div class="card"><h1>🏢 Tous les garages</h1><div id="list">Chargement...</div></div>
+<div class="card">
+<input id="plaque" placeholder="Plaque: BH 34 30 RB">
+<input id="marque" placeholder="Marque: Toyota Corolla">
+<input id="proprio" placeholder="Propriétaire: M. Michel">
+<input id="tel" placeholder="Tel client">
+<input id="travaux" placeholder="Travaux faits aujourd'hui">
+<input id="prix" type="number" placeholder="Prix: 25000">
+<button onclick="ajouter()">+ Enregistrer réparation</button>
+</div>
+
+<div id="liste"></div>
 
 <script>
 const URL='https://fzoukuaadwvnnppkiqkf.supabase.co';
 const KEY='sb_publishable_JKJdHn9ciVp2Rh8Fbr62Hg_Neh8uNGL';
 const sb=supabase.createClient(URL,KEY);
-async function load(){
-  const {data,error}=await sb.from('garages').select('*').order('created_at',{ascending:false});
-  if(error){document.getElementById('list').innerHTML='Erreur: '+error.message;return;}
-  document.getElementById('g').innerText=data.length;
-  document.getElementById('a').innerText=data.filter(x=>!x.is_premium).length;
-  document.getElementById('v').innerText=data.filter(x=>x.is_premium).length;
-  document.getElementById('e').innerText=(data.filter(x=>x.is_premium).length*5000)+'F';
-  if(data.length==0){document.getElementById('list').innerHTML='Aucun garage pour le moment. Partage ton lien app.html';document.getElementById('pays').innerHTML='Aucun paiement';return;}
-  document.getElementById('list').innerHTML=data.map(x=>`<div class="item"><div><b>${x.nom_garage}</b><br><small>${x.telephone} - ${x.nombre_vehicules} véhicules</small></div><div class="badge ${x.is_premium?'paid':'free'}">${x.is_premium?'PAYÉ':'GRATUIT'}</div></div>`).join('');
-  let payes=data.filter(x=>x.is_premium);
-  document.getElementById('pays').innerHTML=payes.length?payes.map(x=>`<div class="item"><div>${x.nom_garage} - ${x.telephone}</div><b style="color:#22c55e">5000F</b></div>`).join(''):'Aucun paiement';
-}load();
-</script></body></html>
+const TEL_GARAGE = localStorage.getItem('mon_tel') || prompt("Ton numéro de garage pour l'admin ? ex: 0153436598");
+localStorage.setItem('mon_tel', TEL_GARAGE);
+
+let vehicules = [];
+async function charger(){
+  let {data} = await sb.from('vehicules').select('*').eq('garage_telephone', TEL_GARAGE).order('created_at',{ascending:false});
+  vehicules = data || [];
+  afficher(vehicules);
+  checkPaywall();
+  // envoie au dashboard admin
+  await sb.from('garages').upsert({telephone:TEL_GARAGE, nom_garage:'Garage '+TEL_GARAGE, nombre_vehicules: vehicules.length},{onConflict:'telephone'});
+}
+function checkPaywall(){
+  let isPremium = localStorage.getItem('premium')==='true';
+  if(vehicules.length >=3 && !isPremium){
+    document.getElementById('paywall').style.display='block';
+  } else {
+    document.getElementById('paywall').style.display='none';
+  }
+}
+function afficher(list){
+  document.getElementById('liste').innerHTML = list.map(v=>`
+    <div class="card">
+      <b>${v.plaque}</b> - ${v.marque}<br>
+      <small>Proprio: ${v.proprietaire} | ${v.telephone_proprio}</small><br>
+      <div style="margin-top:8px;background:#f1f5f9;padding:8px;border-radius:6px">
+        📅 ${new Date(v.created_at).toLocaleDateString()} : ${v.derniere_reparation} - ${v.prix}F
+      </div>
+    </div>
+  `).join('');
+}
+async function ajouter(){
+  if(vehicules.length>=3 && localStorage.getItem('premium')!=='true'){ alert('Paye 5000F pour débloquer'); return; }
+  let v={
+    garage_telephone: TEL_GARAGE,
+    plaque: document.getElementById('plaque').value,
+    marque: document.getElementById('marque').value,
+    proprietaire: document.getElementById('proprio').value,
+    telephone_proprio: document.getElementById('tel').value,
+    derniere_reparation: document.getElementById('travaux').value,
+    prix: parseInt(document.getElementById('prix').value)||0
+  };
+  if(!v.plaque) return alert('Plaque obligatoire');
+  await sb.from('vehicules').insert(v);
+  // reset
+  document.getElementById('plaque').value=''; document.getElementById('travaux').value=''; document.getElementById('prix').value='';
+  charger();
+}
+function filtrer(){
+  let q=document.getElementById('search').value.toLowerCase();
+  afficher(vehicules.filter(v=>v.plaque.toLowerCase().includes(q)));
+}
+charger();
+</script>
+</body>
+</html>
