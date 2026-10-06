@@ -1,8 +1,8 @@
 {
-  "name": "GaragePro",
+  "name": "GaragePro - Mémoire",
   "short_name": "GaragePro",
-  "description": "Gestion de garage automobile - Devis, stock, clients",
-  "start_url": "/Garagepro/app.html",
+  "description": "Gestion memoire du garage BH 34 30 RB",
+  "start_url": "app.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#16a34a",
